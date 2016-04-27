@@ -1,6 +1,6 @@
 import requests
 import threading
-import lxml
+from lxml import etree
 
 class FB(object):
     
@@ -24,11 +24,20 @@ class FB(object):
         self._threads = dict()
         self._session = requests.Session()
         self._session.headers["User-Agent"] = self._resources["User-Agent"]
+        self._pingThread = None
         self._thread = threading.Thread(target = self._init, args = (x, y))
         self._thread.daemon = True
         self._thread.start()
         
-    def _init(self, x, y):
-        form = lxml.etree.HTML(self._session.get(self._resources["login-url"]).text).xpath('//form[@id="login_form"][1]')
-        return
         
+    def _init(self, x, y):
+        form = etree.HTML(self._session.get(self._resources["login-url"]).text).xpath('//form[@id="login_form"][1]')
+        if form:
+            form_data = dict()
+            for x in form[0].xpath('.//input'):
+                if x.xpath('@name[1]') and x.xpath('@value[1]'):
+                    form_data.update({x.xpath('@name[1]')[0]: x.xpath('@value[1]')[0]})
+            self._resources["login-form-values"] = form_data
+        else:
+            raise Exception("Something went wrong: No form was found for login")
+        return
