@@ -23,6 +23,7 @@ class FB(object):
         self._resources["ping-parameters"]["viewer_uid"] = ""
         self._resources["ping-parameters"]["sticky_token"] = "479"
         self._resources["ping-parameters"]["state"] = "active"
+        self._resources["credentials"] = dict()
         self._resources["credentials"]["email"] = x
         self._resources["credentials"]["password"] = y
         self._resources["uid"] = None
@@ -48,14 +49,20 @@ class FB(object):
                 if x.xpath('@name[1]') and x.xpath('@value[1]'):
                     form_data.update({x.xpath('@name[1]')[0]: x.xpath('@value[1]')[0]})
             self._resources["login-form-values"] = form_data
+            self._resources["login-form-values"]["email"] = self._resources["credentials"]["email"]
+            self._resources["login-form-values"]["pass"] = self._resources["credentials"]["password"]
             self._resources["cookies"] = dict()
             self._resources["cookies"]["_js_reg_fb_ref"] = "https%3A%2F%2Fwww.facebook.com%2F"
             self._resources["cookies"]["_js_reg_fb_gate"] = "https%3A%2F%2Fwww.facebook.com%2F"
-            self._resources["cookies"]["_js_datr"] = self._regInstance(self._session.get(self._resources["base-url"]))
-            self._session.post(self._resources["login-url"], self._resources["credentials"], self._resources["cookies"])
+            self._resources["cookies"]["_js_datr"] = self._regInstance(self._session.get(self._resources["base-url"]).text)
+            post = self._session.post(self._resources["login-url"], data = self._resources["login-form-values"], cookies = self._resources["cookies"])
+            self._resources["uid"] = self._uid(post.text)
+            self._resources["ping-parameters"]["channel"] = self._resources["ping-parameters"]["channel"] + self._resources["uid"]
+            self._resources["ping-parameters"]["uid"] = self._resources["ping-parameters"]["uid"] + self._resources["uid"]
+            self._resources["ping-parameters"]["viewer_uid"] = self._resources["ping-parameters"]["viewer_uid"] + self._resources["uid"]
+            self._resources["dtsg"] = self._dtsg(post.text)
         else:
             raise Exception("Something went wrong: No form was found for login")
-        return
         
     def _regInstance(self, data):
         try:
@@ -71,9 +78,23 @@ class FB(object):
             return    
             
     def _uid(self, data):
-        return
-    
+        uid = re.search('\"USER_ID\":\"(\d+)\"', data)
+        if uid and str(uid.group(1)) != "0":     
+            return uid.group(1)
+        else:
+            raise Exception("Unable to gather user id, Probable cause: INVALID LOGIN CREDENTIALS")
+            
+    def _dtsg(self, data):
+        dtsg = re.search('name=\"fb_dtsg\" value=\"(.*?)\"', data)
+        if dtsg and str(dtsg.group(1)) != "0":
+            return dtsg.group(1)
+        else:
+            raise Exception("Unable to gather dtsg value")
+         
     def _unlink(self):
+        self._session.close()
+        self._doPing = False
+        del self._threads["main"]
         return
     
     def ping(self):
@@ -86,10 +107,18 @@ class Manager(object):
         self.running = False
         self.fb = FB(x, y, self)
         
-    def link(self, fb):
-        self.running = True
+    def link(self):
         self.fb.init()
+        self.running = True
         
     def close(self):
         self.fb._unlink()
+        self.running = False
         return
+        
+    def ping(self):
+        if self.running:
+            self.fb.ping()
+        else:
+            print("Facebook instance isn't running")
+            
