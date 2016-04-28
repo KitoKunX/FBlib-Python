@@ -1,5 +1,6 @@
 import requests
 import threading
+import re
 from lxml import etree
 
 class FB(object):
@@ -21,6 +22,7 @@ class FB(object):
         self._resources["ping-parameters"]["sticky_token"] = "479"
         self._resources["ping-parameters"]["state"] = "active"
         self._resources["uid"] = None
+        self._resources["cookies"] = None
         self._threads = dict()
         self._session = requests.Session()
         self._session.headers["User-Agent"] = self._resources["User-Agent"]
@@ -38,6 +40,23 @@ class FB(object):
                 if x.xpath('@name[1]') and x.xpath('@value[1]'):
                     form_data.update({x.xpath('@name[1]')[0]: x.xpath('@value[1]')[0]})
             self._resources["login-form-values"] = form_data
+            self._resources["credentials"]["email"] = x
+            self._resources["credentials"]["password"] = y
+            self._resources["cookies"] = dict()
+            self._resources["cookies"]["_js_reg_fb_ref"] = "https%3A%2F%2Fwww.facebook.com%2F"
+            self._resources["cookies"]["_js_reg_fb_gate"] = "https%3A%2F%2Fwww.facebook.com%2F"
+            self._resources["cookies"]["_js_datr"] = self._regInstance(self._session.get(self._resources["base-url"]))
+            self._session.post(self._resources["login-url"], self._resources["credentials"], self._resources["cookies"])
         else:
             raise Exception("Something went wrong: No form was found for login")
+        return
+        
+    def _regInstance(self, data):
+        try:
+            regInstance = etree.HTML(data).xpath('//input[@id="reg_instance"]/@value')[0]
+            return regInstance
+        except Exception as e:
+            raise Exception("Unable to return reg_instance value: " + str(e))
+            
+    def _uid(self, data):
         return
