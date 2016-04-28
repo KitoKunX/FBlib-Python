@@ -1,6 +1,7 @@
 import requests
 import threading
 import re
+import time
 from lxml import etree
 
 class FB(object):
@@ -27,6 +28,8 @@ class FB(object):
         self._session = requests.Session()
         self._session.headers["User-Agent"] = self._resources["User-Agent"]
         self._pingThread = None
+        self._doPing = False
+        self._running  = False
         self._thread = threading.Thread(target = self._init, args = (x, y))
         self._thread.daemon = True
         self._thread.start()
@@ -58,5 +61,34 @@ class FB(object):
         except Exception as e:
             raise Exception("Unable to return reg_instance value: " + str(e))
             
+    def _ping(self, interval = 2):
+        while self._doPing:
+            self.ping()
+            time.sleep(interval)
+            return    
+            
     def _uid(self, data):
+        return
+    
+    def _unlink(self):
+        return
+    
+    def ping(self):
+        return
+        
+                
+class Manager(object):
+    
+    def __init__(self, fb):
+        self.running = False
+        self.fb = fb
+        self.link(self.fb)
+        return
+        
+    def link(self, fb):
+        self.running = True
+        return
+        
+    def close(self):
+        self.fb._unlink()
         return
